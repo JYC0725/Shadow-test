@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>人格阴影趣味测试</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    body{background:#f7f3eb;color:#444;padding:16px;line-height:1.6}
+    .container{max-width:600px;margin:0 auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 2px 12px #00000008}
+    .page{display:none}
+    .page.active{display:block}
+    h1{font-size:22px;text-align:center;margin-bottom:16px;color:#554b42}
+    .desc{text-align:center;margin-bottom:24px;color:#666;font-size:14px}
+    .btn{display:block;width:100%;border:none;background:#b8a898;color:#fff;padding:14px;border-radius:12px;font-size:16px;margin:10px 0;cursor:pointer}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .question-title{font-size:18px;margin-bottom:18px;font-weight:500}
+    .option{border:1px solid #ddd;border-radius:12px;padding:14px;margin:10px 0;cursor:pointer}
+    .option.selected{border-color:#b8a898;background:#f7f3eb}
+    .nav-row{display:flex;gap:12px;margin-top:24px}
+    .nav-row .btn{flex:1}
+    .result-wrap{padding:12px}
+    .score-text{text-align:center;font-size:17px;margin-bottom:16px}
+    .result-title{font-size:20px;font-weight:bold;margin-bottom:12px;color:#554b42}
+    .result-text{margin-bottom:20px}
+    .tip{font-size:14px;color:#777;margin-top:12px}
+    .copy-tip{text-align:center;color:#888;font-size:13px;margin-top:8px;height:20px}
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- 首页 -->
+  <div id="page-start" class="page active">
+    <h1>人格阴影趣味测试</h1>
+    <div class="desc">
+      本内容为趣味娱乐测试，仅用于自我探索休闲参考，不属于专业心理测评，不能作为心理诊断依据，请勿过度对号入座。<br>长期持续情绪痛苦，请寻求正规心理科或持证心理咨询师帮助。
+    </div>
+    <button class="btn" onclick="startTest()">开始测试</button>
+  </div>
+
+  <!-- 答题页 -->
+  <div id="page-question" class="page">
+    <div class="question-title" id="q-title"></div>
+    <div id="options-box"></div>
+    <div class="nav-row">
+      <button class="btn" id="btn-prev" onclick="prevQuestion()">上一题</button>
+      <button class="btn" id="btn-next" onclick="nextQuestion()">下一题</button>
+    </div>
+  </div>
+
+  <!-- 结果页 -->
+  <div id="page-result" class="page">
+    <div id="result-content">
+      <div class="result-wrap">
+        <h1>你的测试结果</h1>
+        <div class="score-text" id="scoreLine"></div>
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-text" id="resultBody"></div>
+        <div class="tip">提示：本测试仅为趣味自测，仅供自我觉察参考</div>
+      </div>
+    </div>
+    <button class="btn" onclick="saveAsImage()">保存结果长图</button>
+    <button class="btn" onclick="shareLink()">复制分享链接</button>
+    <div class="copy-tip" id="copyTip"></div>
+    <button class="btn" onclick="restart()">重新测试</button>
+  </div>
+</div>
+
+<script>
+// 题目数据
+const questions = [
+  {q:"朋友临时约你，但你已经打算独处休息，你会？",opts:[
+    {t:"A. 勉强赴约，不想让对方失望",v:1},
+    {t:"B. 委婉拒绝，心里有点愧疚",v:2},
+    {t:"C. 直接说明想休息，拒绝邀约",v:3},
+    {t:"D. 觉得对方很扫兴，打扰你的计划",v:4}
+  ]},
+  {q:"在众人面前有人否定你的想法，你的第一反应？",opts:[
+    {t:"A. 沉默，怀疑是不是自己真的做错了",v:1},
+    {t:"B. 表面不动声色，心里不服气",v:2},
+    {t:"C. 平静说出自己的想法，理性沟通",v:3},
+    {t:"D. 立刻反驳，一定要争赢",v:4}
+  ]},
+  {q:"看到同龄人取得很好的成绩、过得耀眼，你下意识感受？",opts:[
+    {t:"A. 真心替对方开心",v:1},
+    {t:"B. 有点羡慕，默默鼓励自己努力",v:2},
+    {t:"C. 心里泛起酸涩，不太愿意多看",v:3},
+    {t:"D. 暗自对比，觉得命运很不公平",v:4}
+  ]},
+  {q:"一件重要的事搞砸了，你最先下意识归因？",opts:[
+    {t:"A. 是我能力不行，全部责怪自己",v:1},
+    {t:"B. 有自己的问题，也有客观因素",v:2},
+    {t:"C. 主要是环境、运气、外部条件问题",v:3},
+    {t:"D. 是其他人配合不好，拖累了我",v:4}
+  ]},
+  {q:"和别人发生争执之后，你通常会？",opts:[
+    {t:"A. 主动示好，害怕关系就此破裂",v:1},
+    {t:"B. 先冷静一段时间，看对方态度",v:2},
+    {t:"C. 顺其自然，不强求修复",v:3},
+    {t:"D. 记在心里，很难放下这件事",v:4}
+  ]},
+  {q:"遇到各方面比你优秀的人，你会？",opts:[
+    {t:"A. 主动靠近，向对方学习",v:1},
+    {t:"B. 默默观察，吸取对方长处",v:2},
+    {t:"C. 不自觉拉开距离，保持疏远",v:3},
+    {t:"D. 下意识寻找对方身上的缺点",v:4}
+  ]},
+  {q:"收到别人真诚夸奖时，你的内心感受？",opts:[
+    {t:"A. 惶恐，觉得自己配不上这份赞美",v:1},
+    {t:"B. 开心，坦然收下感谢对方",v:2},
+    {t:"C. 浑身不自在，快速转移话题",v:3},
+    {t:"D. 怀疑对方只是客套、在捧杀自己",v:4}
+  ]},
+  {q:"原本安排好的计划，被别人突然打乱，你会？",opts:[
+    {t:"A. 顺着对方，直接更改自己安排",v:1},
+    {t:"B. 适当调整，尽量两边兼顾",v:2},
+    {t:"C. 感到烦躁，但可以慢慢适应",v:3},
+    {t:"D. 非常恼火，忍不住表达不满",v:4}
+  ]},
+  {q:"当察觉到自己自私、懒惰、小心眼这类缺点时？",opts:[
+    {t:"A. 强烈自责，不断批判、厌恶自己",v:1},
+    {t:"B. 接纳，明白每个人都有不完美之处",v:2},
+    {t:"C. 刻意不去思考，回避这个部分",v:3},
+    {t:"D. 觉得大家都这样，根本不算问题",v:4}
+  ]},
+  {q:"团队奖励、利益分配的时候，你会？",opts:[
+    {t:"A. 主动退让，不去争抢",v:1},
+    {t:"B. 属于自己的，坦然接受",v:2},
+    {t:"C. 不好意思主动开口争取",v:3},
+    {t:"D. 认为自己理应拿到更多",v:4}
+  ]},
+  {q:"别人求助你，请求已经超出你的承受能力？",opts:[
+    {t:"A. 硬撑答应，害怕拒绝伤害对方",v:1},
+    {t:"B. 如实说明情况，量力而行",v:2},
+    {t:"C. 委婉找理由回避，减少往来",v:3},
+    {t:"D. 觉得对方很麻烦，内心感到厌烦",v:4}
+  ]},
+  {q:"听到别人和你不一样的观点，和你的认知冲突时？",opts:[
+    {t:"A. 顺着对方，不去争辩",v:1},
+    {t:"B. 听听就好，保留自己想法",v:2},
+    {t:"C. 不想继续聊这个话题，快速结束",v:3},
+    {t:"D. 试图说服对方，证明他是错的",v:4}
+  ]},
+  {q:"你察觉到自己产生嫉妒、怨恨这类负面情绪时？",opts:[
+    {t:"A. 极度自责，痛恨自己怎么会这样",v:1},
+    {t:"B. 接纳情绪，观察它然后慢慢平复",v:2},
+    {t:"C. 压抑情绪，假装没有这种感受",v:3},
+    {t:"D. 任由情绪蔓延，觉得是别人造成的",v:4}
+  ]},
+  {q:"和伴侣、好友产生矛盾，对方没有主动找你？",opts:[
+    {t:"A. 忍不住先低头，害怕失去关系",v:1},
+    {t:"B. 等一等，给彼此冷静时间",v:2},
+    {t:"C. 随缘，对方不找我我也不主动",v:3},
+    {t:"D. 心里积攒不满，开始冷淡疏远",v:4}
+  ]},
+  {q:"一件属于你的小秘密被别人无意发现，你会？",opts:[
+    {t:"A. 紧张不安，担心对方到处乱说",v:1},
+    {t:"B. 叮嘱对方保密，放宽心",v:2},
+    {t:"C. 变得警惕，减少和这个人交心",v:3},
+    {t:"D. 心里反感，觉得对方窥探了你",v:4}
+  ]}
+]
+
+// 结果配置
+const resultMap = [
+  {min:15,max:26,title:"【讨好者阴影】",body:`你的阴影面：习惯压抑自我的顺从者<br><br>你的阴影，是长期被你藏起来的真实需求。你非常害怕冲突、害怕被讨厌，习惯优先照顾所有人的感受，把 “懂事” 当成保护壳。<br>很多时候明明内心不愿意，也会迎合妥协，不敢表达拒绝。长期下来容易持续内耗，委屈堆积。<br><br>觉察提示：善良不需要以牺牲自己为代价，你的感受同样值得被重视，学会合理拒绝不是坏事。`},
+  {min:27,max:38,title:"【逃避者阴影】",body:`你的阴影面：回避情绪拉扯的抽离者<br><br>你畏惧沉重、激烈的矛盾和浓烈的负面情绪。一旦氛围变得紧绷，你的本能就是躲开、淡化、假装无所谓。<br>表面平和淡定，很多情绪只是被你压下去，没有被处理。遇到棘手难题，你更容易搁置、回避，而不是直面问题。<br><br>觉察提示：逃避可以短暂保护你，但被搁置的情绪会慢慢消耗你，不必急着躲开所有不舒服的感受。`},
+  {min:39,max:50,title:"【评判者阴影】",body:`你的阴影面：暗自较劲的胜负型自我<br><br>你内心藏着很强的比较欲。很难安心欣赏别人的光芒，会不自觉暗中对比，习惯挑剔他人的不足，以此稳住自己的安全感。<br>你很难示弱，不愿意承认自己的失败、脆弱，害怕暴露短板。<br><br>觉察提示：不需要依靠对比证明自己。允许别人发光，也接纳自己有做不好、跟不上的时候。`},
+  {min:51,max:60,title:"【反击者阴影】",body:`你的阴影面：容易向外爆发的攻击性自我<br><br>你的阴影是积压的攻击性，边界感极强。一旦被冒犯、被打乱节奏，负面情绪会快速涌上来。<br>遇到不顺习惯向外归因，容易怪罪外界、怪罪他人。情绪上头时容易说出伤人的话，冷静之后又常常后悔。<br><br>觉察提示：攻击性本身不是坏东西，它是你守护边界的力量。你可以练习温和坚定表达，不必用对抗的方式保护自己。`}
+]
+
+let current = 0
+let answers = Array(questions.length).fill(null)
+let totalScore = 0
+
+// 切换页面
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
+  document.getElementById(id).classList.add("active")
+}
+
+function startTest(){
+  current=0;answers=Array(questions.length).fill(null);renderQuestion()
+  showPage("page-question")
+}
+
+function renderQuestion(){
+  const q = questions[current]
+  document.getElementById("q-title").innerText = `第${current+1}题：${q.q}`
+  const box = document.getElementById("options-box")
+  box.innerHTML=""
+  q.opts.forEach((opt,idx)=>{
+    const div = document.createElement("div")
+    div.className = "option"
+    if(answers[current]===opt.v) div.classList.add("selected")
+    div.innerText = opt.t
+    div.onclick = ()=>{
+      answers[current]=opt.v
+      renderQuestion()
+    }
+    box.appendChild(div)
+  })
+  document.getElementById("btn-prev").disabled = current===0
+  const nextBtn = document.getElementById("btn-next")
+  if(current === questions.length-1){
+    nextBtn.innerText = "查看结果"
+  }else{
+    nextBtn.innerText = "下一题"
+  }
+}
+
+function prevQuestion(){
+  if(current>0){current--;renderQuestion()}
+}
+function nextQuestion(){
+  if(answers[current]==null){alert("请选择一个答案");return}
+  if(current < questions.length-1){
+    current++;renderQuestion()
+  }else{
+    calcResult()
+  }
+}
+
+function calcResult(){
+  let sum = answers.reduce((a,b)=>a+b,0)
+  totalScore = sum
+  let res = resultMap.find(r=>sum >= r.min && sum <= r.max)
+  document.getElementById("scoreLine").innerText = `你的总分：${sum}分`
+  document.getElementById("resultTitle").innerText = res.title
+  document.getElementById("resultBody").innerHTML = res.body
+  // 把分数写入url，用于分享
+  const url = new URL(location.href)
+  url.searchParams.set("s",sum)
+  history.replaceState(null,"",url.toString())
+  showPage("page-result")
+}
+
+// 保存长图
+async function saveAsImage(){
+  const dom = document.getElementById("result-content")
+  const canvas = await html2canvas(dom,{scale:2,useCORS:true,backgroundColor:"#fff"})
+  const link = document.createElement("a")
+  link.download = "人格阴影测试结果.png"
+  link.href = canvas.toDataURL("image/png")
+  link.click()
+}
+
+// 复制分享链接
+async function shareLink(){
+  const u = location.href
+  try{
+    await navigator.clipboard.writeText(u)
+    document.getElementById("copyTip").innerText="✅ 链接已复制"
+  }catch(e){
+    document.getElementById("copyTip").innerText="复制失败，请手动复制地址栏链接"
+  }
+  setTimeout(()=>document.getElementById("copyTip").innerText="",2500)
+}
+
+function restart(){
+  const url = new URL(location.href)
+  url.searchParams.delete("s")
+  history.replaceState(null,"",url.toString())
+  showPage("page-start")
+}
+
+// 打开页面，如果url带分数参数，直接渲染结果（分享进来）
+window.onload = function(){
+  const p = new URLSearchParams(location.search)
+  const s = p.get("s")
+  if(s){
+    let sum = Number(s)
+    if(!isNaN(sum) && sum>=15 && sum<=60){
+      totalScore = sum
+      let res = resultMap.find(r=>sum >= r.min && sum <= r.max)
+      document.getElementById("scoreLine").innerText = `你的总分：${sum}分`
+      document.getElementById("resultTitle").innerText = res.title
+      document.getElementById("resultBody").innerHTML = res.body
+      showPage("page-result")
+    }
+  }
+}
+</script>
+</body>
+</html>
